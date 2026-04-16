@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String         @id @default(cuid())
+  name           String         @default("Default User")
+  username       String         @unique @default("admin")
+  email          String         @unique
+  bio            String?
+  timezone       String         @default("Asia/Kolkata")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  eventTypes     EventType[]
+  availabilities Availability[]
+  bookings       Booking[]
+}
+
+model EventType {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?
+  duration    Int
+  color       String    @default("#0069FF")
+  isActive    Boolean   @default(true)
+  bufferTime  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+
+  @@index([slug])
+  @@index([userId])
+}
+
+model Availability {
+  id        String             @id @default(cuid())
+  name      String             @default("Working Hours")
+  timezone  String             @default("Asia/Kolkata")
+  isDefault Boolean            @default(true)
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slots     AvailabilitySlot[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([userId, isDefault])
+}
+
+model AvailabilitySlot {
+  id             String       @id @default(cuid())
+  dayOfWeek      Int
+  startTime      String
+  endTime        String
+  availabilityId String
+  availability   Availability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
+
+  @@index([availabilityId, dayOfWeek])
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  title        String
+  startTime    DateTime
+  endTime      DateTime
+  status       BookingStatus @default(ACCEPTED)
+  guestName    String
+  guestEmail   String
+  guestNotes   String?
+  cancelReason String?
+  meetingUrl   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  eventTypeId  String
+  eventType    EventType     @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([startTime])
+  @@index([status])
+  @@index([eventTypeId, startTime])
+}
+
+enum BookingStatus {
+  ACCEPTED
+  CANCELLED
+  RESCHEDULED
+}
